@@ -32,7 +32,7 @@ echo "To add documents to your knowledge base, place them in the me/knowledge di
 echo "Supported formats: PDF and TXT files."
 echo ""
 echo "To run the RAG-enabled application:"
-echo "python main_rag.py"
+echo "python main.py"
 echo ""
 echo "To use the dedicated RAG client:"
 echo "python rag_client.py"

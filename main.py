@@ -3,17 +3,23 @@ from openai import OpenAI
 import json
 import os
 import requests
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, EmailStr
 from pypdf import PdfReader
 import uvicorn
-from typing import Optional
+from typing import Optional, List, Dict, Any
+
+from rag import RAGSystem
 
 # Load environment variables
 load_dotenv(override=True)
 
-app = FastAPI(title="Personal Chat API", description="API for chatting with me using GPT-4o-mini")
+app = FastAPI(
+    title="Personal Chat API with RAG",
+    description="API for chatting with me using GPT-4o-mini enhanced with RAG capabilities"
+)
 
 # Add CORS middleware
 app.add_middleware(
@@ -39,6 +45,20 @@ class ChatMessage(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+
+class RAGQuery(BaseModel):
+    query: str = Field(..., example="What projects have you worked on?")
+    top_k: int = Field(default=3, ge=1, le=10, example=3)
+
+class RAGSource(BaseModel):
+    source: str
+    content: str
+    score: float
+    chunk_id: Optional[int] = None
+
+class RAGResponse(BaseModel):
+    answer: str
+    sources: List[RAGSource] = []
 
 # Push notification function
 def push(text):
@@ -108,14 +128,44 @@ class Me:
     def __init__(self):
         self.openai = OpenAI()
         self.name = "Said Madi"
-        reader = PdfReader("me/linkedin.pdf")
-        self.linkedin = ""
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                self.linkedin += text
-        with open("me/summary.txt", "r", encoding="utf-8") as f:
-            self.summary = f.read()
+        self.rag = None
+        try:
+            reader = PdfReader("me/linkedin.pdf")
+            self.linkedin = ""
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    self.linkedin += text
+                    
+            with open("me/summary.txt", "r", encoding="utf-8") as f:
+                self.summary = f.read()
+                
+            # Initialize RAG system with LinkedIn data
+            self.initialize_rag()
+        except FileNotFoundError as e:
+            print(f"Warning: {e} - Some functionality may be limited")
+            self.linkedin = "LinkedIn profile not available"
+            self.summary = "Summary not available"
+    
+    def initialize_rag(self):
+        """Initialize and populate the RAG system"""
+        self.rag = RAGSystem()
+        
+        # Add summary and LinkedIn data
+        self.rag.add_text(self.summary, {"source": "summary"})
+        self.rag.add_text(self.linkedin, {"source": "linkedin"})
+        
+        # Add any additional documents in the knowledge directory
+        knowledge_dir = "me/knowledge"
+        if os.path.exists(knowledge_dir):
+            for filename in os.listdir(knowledge_dir):
+                file_path = os.path.join(knowledge_dir, filename)
+                if filename.lower().endswith('.pdf'):
+                    self.rag.add_pdf(file_path, {"source": filename})
+                elif filename.lower().endswith('.txt'):
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        text = f.read()
+                        self.rag.add_text(text, {"source": filename})
 
     def handle_tool_call(self, tool_calls):
         results = []
@@ -162,11 +212,28 @@ If the user is engaging in discussion, try to steer them towards getting in touc
 # Initialize Me class
 me = Me()
 
+# Dependency for RAG system
+def get_rag_system():
+    if me.rag is None:
+        me.initialize_rag()
+    return me.rag
+
 # API Endpoints
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(chat_message: ChatMessage):
     response = me.chat(chat_message.message, chat_message.history)
     return {"response": response}
+
+@app.post("/rag/query", response_model=RAGResponse)
+async def rag_query(query: RAGQuery, rag_system: RAGSystem = Depends(get_rag_system)):
+    """
+    Query the system using Retrieval Augmented Generation (RAG)
+    """
+    try:
+        answer, sources = rag_system.query(query.query, top_k=query.top_k)
+        return {"answer": answer, "sources": sources}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing RAG query: {str(e)}")
 
 @app.post("/record-details")
 async def record_details_endpoint(user_details: UserDetails, background_tasks: BackgroundTasks):
@@ -180,7 +247,13 @@ async def record_question_endpoint(question: Question, background_tasks: Backgro
 
 @app.get("/")
 async def root():
-    return {"message": f"Welcome to {me.name}'s chat API"}
+    return {
+        "message": f"Welcome to {me.name}'s chat API with RAG capabilities",
+        "endpoints": {
+            "chat": "/chat",
+            "rag": "/rag/query"
+        }
+    }
 
 # For standalone execution with Gradio UI
 if __name__ == "__main__":
@@ -188,27 +261,43 @@ if __name__ == "__main__":
     
     # Define Gradio interface using FastAPI backend
     with gr.Blocks(title=f"Chat with {me.name}") as interface:
-        chatbot = gr.Chatbot(type="messages")
-        msg = gr.Textbox(label="Message")
-        clear = gr.Button("Clear")
-        
-        def respond(message, chat_history):
-            # Format history for API
-            formatted_history = []
-            for msg in chat_history:
-                formatted_history.append(msg)
+        with gr.Tab("Chat"):
+            chatbot = gr.Chatbot(type="messages")
+            msg = gr.Textbox(label="Message")
+            clear = gr.Button("Clear")
+            
+            def respond(message, chat_history):
+                # Format history for API
+                formatted_history = []
+                for msg in chat_history:
+                    formatted_history.append(msg)
+                    
+                # Get response
+                response = me.chat(message, formatted_history)
                 
-            # Get response
-            response = me.chat(message, formatted_history)
+                # Add to chat history in messages format
+                chat_history.append({"role": "user", "content": message})
+                chat_history.append({"role": "assistant", "content": response})
+                
+                return "", chat_history
             
-            # Add to chat history in messages format
-            chat_history.append({"role": "user", "content": message})
-            chat_history.append({"role": "assistant", "content": response})
-            
-            return "", chat_history
+            msg.submit(respond, [msg, chatbot], [msg, chatbot])
+            clear.click(lambda: None, None, chatbot, queue=False)
         
-        msg.submit(respond, [msg, chatbot], [msg, chatbot])
-        clear.click(lambda: None, None, chatbot, queue=False)
+        with gr.Tab("RAG Query"):
+            query_input = gr.Textbox(label="Question")
+            top_k = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Number of context chunks")
+            query_button = gr.Button("Search")
+            answer_output = gr.Textbox(label="Answer")
+            sources_output = gr.JSON(label="Sources")
+            
+            def rag_search(query, k):
+                if me.rag is None:
+                    me.initialize_rag()
+                answer, sources = me.rag.query(query, top_k=k)
+                return answer, sources
+            
+            query_button.click(rag_search, [query_input, top_k], [answer_output, sources_output])
         
         # Launch Gradio with FastAPI backend
         interface.launch(server_name="0.0.0.0", server_port=8000, share=True)

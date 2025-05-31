@@ -1,165 +1,230 @@
 # Personal Chat API with RAG
 
-A FastAPI application that allows users to chat with an AI assistant personalized with your background information. The application includes two versions: a basic chat version and an enhanced version with Retrieval Augmented Generation (RAG) capabilities.
+A sophisticated FastAPI application that creates a personalized AI assistant enhanced with Retrieval Augmented Generation (RAG) capabilities. This application allows you to create a digital representation of yourself that can answer questions based on your personal information, LinkedIn profile, and any additional knowledge documents.
 
-## Features
+## Architecture & Technical Details
 
-### Core Features (Both Versions)
-- Chat interface using GPT-4o-mini
-- FastAPI backend for API endpoints
-- Gradio UI for interactive chat
-- Tool system for recording user details and unknown questions
-- Push notifications via Pushover
+### Core Components
 
-### RAG Features (Enhanced Version)
-- Document indexing and semantic search
-- Automatic processing of PDF and text files
-- Vector-based retrieval of relevant context
-- Dedicated RAG query endpoint and client
-- Gradio UI with RAG query tab
+1. **FastAPI Backend**
+   - RESTful API with JSON-based communication
+   - Swagger documentation at `/docs`
+   - CORS-enabled for cross-origin requests
+   - Type validation with Pydantic models
 
-## Project Structure
+2. **RAG Implementation**
+   - OpenAI embeddings for semantic search (`text-embedding-3-small`)
+   - Document chunking with configurable size and overlap
+   - PDF and text file processing
+   - Cosine similarity scoring for relevant context retrieval
+   - No external vector database required (in-memory storage)
 
-```
-.
-├── main.py               # Basic chat application
-├── main_rag.py           # Enhanced application with RAG
-├── rag.py                # RAG implementation
-├── client.py             # Basic chat client
-├── rag_client.py         # RAG query client
-├── setup_venv.sh         # Setup script for basic version
-├── setup_rag_env.sh      # Setup script for RAG version
-├── requirements.txt      # Dependencies for both versions
-└── me/                   # Personal information and knowledge base
-    ├── summary.txt       # Brief personal summary
-    ├── linkedin.pdf      # LinkedIn profile as PDF
-    └── knowledge/        # Additional knowledge documents
-```
+3. **LLM Integration**
+   - Uses OpenAI's GPT-4o-mini model
+   - Function calling for tool usage
+   - System prompt engineering for persona adoption
+   - Contextual response generation
 
-## Setup
+4. **Interactive UI**
+   - Gradio-based interface with tabbed layout
+   - Chat interface with message history
+   - Dedicated RAG query interface
+   - Source attribution display
+
+5. **Clients**
+   - Command-line chat client
+   - RAG-specific query client with result formatting
+   - Interactive and single-query modes
+
+### API Endpoints
+
+| Endpoint | Method | Description | Request Body | Response |
+|----------|--------|-------------|--------------|----------|
+| `/` | GET | Welcome message | None | Basic info with available endpoints |
+| `/chat` | POST | Chat with AI assistant | `ChatMessage` (message + history) | `ChatResponse` (AI response) |
+| `/rag/query` | POST | Direct RAG query | `RAGQuery` (query + top_k) | `RAGResponse` (answer + sources) |
+| `/record-details` | POST | Record user contact | `UserDetails` (email, name, notes) | Success message |
+| `/record-question` | POST | Record unanswered questions | `Question` (question text) | Success message |
+
+## Setup & Installation
 
 ### Prerequisites
-- Python 3.9 or later
+
+- Python 3.9+ 
 - OpenAI API key
-- Pushover account (optional, for notifications)
+- Personal information:
+  - LinkedIn profile PDF
+  - Brief summary text
+  - (Optional) Additional knowledge documents
 
-### Basic Version Setup
+### Environment Setup
 
-1. Create the necessary files:
+1. **Clone the repository or set up the project directory**
+
+2. **Create necessary files and directories**
    ```bash
-   mkdir -p me
+   mkdir -p me/knowledge
    touch me/summary.txt
    ```
 
-2. Add your LinkedIn PDF:
-   - Save your LinkedIn profile as a PDF file
-   - Place it in the `me/` folder as `linkedin.pdf`
+3. **Add your personal information**
+   - Save LinkedIn profile as PDF in `me/linkedin.pdf`
+   - Write professional summary in `me/summary.txt`
+   - Add any additional documents to `me/knowledge/` (PDF or TXT format)
 
-3. Create a summary:
-   - Edit `me/summary.txt` with a brief professional summary
-
-4. Run the setup script:
+4. **Run the setup script**
    ```bash
-   ./setup_venv.sh
+   chmod +x setup_env.sh  # Make executable if needed
+   ./setup_env.sh
    ```
+   This will:
+   - Create a Python virtual environment
+   - Install all dependencies
+   - Set up the necessary directories
+   - Create a template .env file
 
-5. Edit the `.env` file to add your API keys:
+5. **Configure environment variables**
+   Edit the `.env` file with your API keys:
    ```
    OPENAI_API_KEY=your_openai_api_key_here
-   PUSHOVER_TOKEN=your_pushover_token_here
-   PUSHOVER_USER=your_pushover_user_key_here
-   ```
-
-### RAG Version Setup
-
-1. Complete the same steps as the basic version setup
-
-2. Create a knowledge directory for additional documents:
-   ```bash
-   mkdir -p me/knowledge
-   ```
-
-3. Add documents to your knowledge base:
-   - Add PDF files to `me/knowledge/`
-   - Add text files to `me/knowledge/`
-
-4. Run the RAG setup script:
-   ```bash
-   ./setup_rag_env.sh
+   PUSHOVER_TOKEN=your_pushover_token_here  # Optional
+   PUSHOVER_USER=your_pushover_user_key_here  # Optional
    ```
 
 ## Running the Application
 
-### Basic Version
+### Starting the Server
 
 ```bash
 # Activate the virtual environment
 source venv/bin/activate
 
-# Run with Gradio UI
+# Start the server with Gradio UI
 python main.py
 
-# Or run with just FastAPI (without Gradio)
+# Alternatively, run with just FastAPI (no UI)
 uvicorn main:app --reload
 ```
 
-### RAG-Enhanced Version
+The server will start on http://localhost:8000 by default.
+
+### Using the Clients
+
+#### Chat Client
+For general conversation with your AI persona:
 
 ```bash
 # Activate the virtual environment
 source venv/bin/activate
 
-# Run with Gradio UI
-python main_rag.py
-
-# Or run with just FastAPI (without Gradio)
-uvicorn main_rag:app --reload
-```
-
-## Using the Clients
-
-### Basic Chat Client
-
-```bash
-# Activate the virtual environment
-source venv/bin/activate
-
-# Run the client
+# Run the chat client
 python client.py
 ```
 
-### RAG Query Client
+#### RAG Client
+For direct knowledge base queries with source attribution:
 
 ```bash
-# Activate the virtual environment
-source venv/bin/activate
-
-# Run in interactive mode
+# Interactive mode
 python rag_client.py
 
-# Or run a single query
+# Single query mode
 python rag_client.py --query "What projects have you worked on?" --top_k 5
 ```
 
-## API Endpoints
+### Accessing the Web UI
 
-### Basic Version Endpoints
-- `GET /`: Welcome message
-- `POST /chat`: Chat with the assistant
-- `POST /record-details`: Record user contact information
-- `POST /record-question`: Record unanswered questions
+- Gradio UI: http://localhost:8000 (when running `python main.py`)
+- FastAPI Swagger docs: http://localhost:8000/docs
 
-### RAG Version Additional Endpoints
-- `POST /rag/query`: Query the RAG system
+## Technical Implementation Details
+
+### RAG System
+
+The RAG implementation follows these steps:
+
+1. **Document Processing**
+   - Documents are loaded from `me/linkedin.pdf`, `me/summary.txt`, and `me/knowledge/*`
+   - Text is extracted from PDFs using PyPDF
+   - Documents are chunked into smaller segments (default: 500 chars with 100 char overlap)
+   - Sentence boundaries are preserved during chunking
+
+2. **Embedding Generation**
+   - Each chunk is embedded using OpenAI's text-embedding-3-small model
+   - Embeddings are stored in memory along with document metadata
+
+3. **Query Processing**
+   - User query is embedded using the same model
+   - Cosine similarity is calculated between query and all document chunks
+   - Top k most relevant chunks are retrieved (default: k=3)
+
+4. **Response Generation**
+   - Retrieved chunks are combined as context
+   - GPT-4o-mini generates a response based on the context and query
+   - Both the response and source information are returned
+
+### Me Class
+
+The `Me` class manages:
+- Personal information loading
+- RAG system initialization
+- System prompt construction
+- Tool handling for recording user information
+- Contextual chat functionality
+
+### Data Flow
+
+1. User sends query via client or UI
+2. Server processes the query through FastAPI
+3. If using `/chat` endpoint:
+   - Query is processed with full persona context
+   - Function calling may be triggered for tools
+4. If using `/rag/query` endpoint:
+   - RAG system retrieves relevant context
+   - Response is generated based on context only
+5. Response is returned to the client/UI
 
 ## Customization
 
-Edit the `Me` class in `main.py` or `main_rag.py` to customize:
-- Your name
-- System prompt
-- Additional background information
+### Personal Information
+Edit the `Me` class in `main.py`:
+```python
+self.name = "Your Name"  # Change to your name
+```
 
-For the RAG version, you can also customize:
-- Embedding model in `rag.py`
-- Chunk size and overlap for document processing
-- Number of context chunks to retrieve per query
+### System Prompt
+Modify the `system_prompt` method in the `Me` class to change how the AI represents you.
+
+### RAG Parameters
+Adjust in `rag.py`:
+```python
+def __init__(self, 
+             embedding_model: str = "text-embedding-3-small",  # Change embedding model
+             chunk_size: int = 500,  # Adjust chunk size
+             chunk_overlap: int = 100):  # Adjust overlap
+```
+
+### UI Customization
+Modify the Gradio interface in `main.py` to add additional UI elements or change styling.
+
+## Technical Limitations & Considerations
+
+- **In-Memory Storage**: Document embeddings are stored in memory, which may not scale for very large knowledge bases
+- **API Key Security**: Ensure your .env file is properly secured and not committed to version control
+- **Rate Limiting**: Be mindful of OpenAI API usage and associated costs
+- **Cold Start**: First query after server start may be slower due to embedding generation
+
+## Troubleshooting
+
+- **Connection Errors**: Ensure the server is running before using clients
+- **API Key Issues**: Check that your OpenAI API key is valid and has sufficient quota
+- **File Not Found Errors**: Verify paths to your LinkedIn PDF and summary file
+- **Dependency Problems**: Make sure all packages are installed with the correct versions
+
+## Extension Ideas
+
+- Add persistent vector storage using FAISS on disk or a database
+- Implement authentication for the API
+- Add document management endpoints for adding/removing knowledge files
+- Create a web frontend beyond the Gradio UI
+- Add support for more file formats beyond PDF and TXT
