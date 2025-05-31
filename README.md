@@ -95,18 +95,42 @@ A sophisticated FastAPI application that creates a personalized AI assistant enh
 
 ### Starting the Server
 
-```bash
-# Activate the virtual environment
-source venv/bin/activate
+There are two ways to run the application:
 
-# Start the server with Gradio UI
-python main.py
+1. **Gradio UI Mode** (Recommended):
+   ```bash
+   # Activate the virtual environment
+   source venv/bin/activate
 
-# Alternatively, run with just FastAPI (no UI)
-uvicorn main:app --reload
-```
+   # Start the server with Gradio UI
+   python main.py
+   ```
+   This launches both the FastAPI backend and the Gradio UI frontend on http://0.0.0.0:8000
 
-The server will start on http://localhost:8000 by default.
+2. **API-Only Mode**:
+   ```bash
+   # Activate the virtual environment
+   source venv/bin/activate
+
+   # Run with just FastAPI (no UI)
+   uvicorn main:app --reload
+   ```
+   This launches only the FastAPI endpoints without the Gradio UI.
+
+### Important Note on Running Modes
+
+The application has different behavior depending on how you start it:
+
+- **Gradio UI Mode (`python main.py`)**: 
+  - Launches a Gradio interface at http://0.0.0.0:8000
+  - The REST API endpoints are NOT directly accessible
+  - RAG functionality is accessed through the Gradio UI or the modified RAG client
+
+- **API-Only Mode (`uvicorn main:app --reload`)**: 
+  - Launches only the REST API at http://localhost:8000
+  - The Gradio UI is NOT available
+  - All REST API endpoints are directly accessible at their documented URLs
+  - Swagger documentation is available at http://localhost:8000/docs
 
 ### Using the Clients
 
@@ -117,7 +141,7 @@ For general conversation with your AI persona:
 # Activate the virtual environment
 source venv/bin/activate
 
-# Run the chat client
+# Run the chat client (works with both server modes)
 python client.py
 ```
 
@@ -125,8 +149,14 @@ python client.py
 For direct knowledge base queries with source attribution:
 
 ```bash
-# Interactive mode
+# When server is in API-Only Mode (uvicorn main:app --reload)
 python rag_client.py
+
+# Note: rag_client.py is configured for API-Only Mode by default
+# If you want to use it with Gradio UI Mode, edit rag_client.py to change:
+# - URL from "http://localhost:8000/rag/query" to "http://0.0.0.0:8000/gradio_api/rag_search"
+# - Payload parameter from "top_k" to "k"
+# - Response parsing to handle the Gradio API response format
 
 # Single query mode
 python rag_client.py --query "What projects have you worked on?" --top_k 5
@@ -134,8 +164,27 @@ python rag_client.py --query "What projects have you worked on?" --top_k 5
 
 ### Accessing the Web UI
 
-- Gradio UI: http://localhost:8000 (when running `python main.py`)
-- FastAPI Swagger docs: http://localhost:8000/docs
+- **Gradio UI**: http://0.0.0.0:8000 (when running `python main.py`)
+  - **Chat Tab**: Interactive conversation with your AI persona
+  - **RAG Query Tab**: Direct knowledge base queries with source attribution
+- **FastAPI Swagger docs**: http://localhost:8000/docs (only when running `uvicorn main:app --reload`)
+
+### Using the Gradio UI
+
+The Gradio UI provides a user-friendly interface for interacting with the system:
+
+1. **Chat Tab**:
+   - Type your message in the text box and press Enter
+   - View the conversation history in the chat window
+   - Clear the conversation with the Clear button
+   - The chat uses your personal information to provide context-aware responses
+
+2. **RAG Query Tab**:
+   - Enter your question in the Question field
+   - Adjust the number of context chunks with the slider (1-10)
+   - Click Search to get an answer
+   - View the answer and the source documents that were used
+   - Sources are displayed with their content and relevance score
 
 ## Technical Implementation Details
 
@@ -213,6 +262,7 @@ Modify the Gradio interface in `main.py` to add additional UI elements or change
 - **API Key Security**: Ensure your .env file is properly secured and not committed to version control
 - **Rate Limiting**: Be mindful of OpenAI API usage and associated costs
 - **Cold Start**: First query after server start may be slower due to embedding generation
+- **Server Mode Differences**: The API endpoints behave differently depending on how you start the server
 
 ## Troubleshooting
 
@@ -220,6 +270,12 @@ Modify the Gradio interface in `main.py` to add additional UI elements or change
 - **API Key Issues**: Check that your OpenAI API key is valid and has sufficient quota
 - **File Not Found Errors**: Verify paths to your LinkedIn PDF and summary file
 - **Dependency Problems**: Make sure all packages are installed with the correct versions
+- **RAG Client Errors**: Verify that the client is configured correctly for your server mode
+- **Chat UI Not Working**: If the chat UI doesn't work, try the following:
+  - Ensure you're running the latest version of the code
+  - Restart the server in Gradio UI mode (`python main.py`)
+  - Clear your browser cache or try a different browser
+  - Check browser console for any JavaScript errors
 
 ## Extension Ideas
 

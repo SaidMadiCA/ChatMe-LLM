@@ -56,10 +56,11 @@ def interactive_mode():
         
         result = rag_query(query)
         
-        if "answer" in result:
-            print(f"\nAnswer: {result['answer']}")
-            if "sources" in result:
-                print_sources(result["sources"])
+        if len(result) >= 2:
+            answer = result[0]
+            sources = result[1]
+            print(f"\nAnswer: {answer}")
+            print_sources(sources)
         else:
             print(f"\nError: {result.get('error', 'Unknown error')}")
 
@@ -73,10 +74,11 @@ def main():
     if args.query:
         # Single query mode
         result = rag_query(args.query, args.top_k)
-        if "answer" in result:
-            print(f"Answer: {result['answer']}")
-            if "sources" in result:
-                print_sources(result["sources"])
+        if len(result) >= 2:
+            answer = result[0] 
+            sources = result[1]
+            print(f"Answer: {answer}")
+            print_sources(sources)
         else:
             print(f"Error: {result.get('error', 'Unknown error')}")
     else:

@@ -262,22 +262,23 @@ if __name__ == "__main__":
     # Define Gradio interface using FastAPI backend
     with gr.Blocks(title=f"Chat with {me.name}") as interface:
         with gr.Tab("Chat"):
-            chatbot = gr.Chatbot(type="messages")
+            chatbot = gr.Chatbot()
             msg = gr.Textbox(label="Message")
             clear = gr.Button("Clear")
             
             def respond(message, chat_history):
                 # Format history for API
                 formatted_history = []
-                for msg in chat_history:
-                    formatted_history.append(msg)
+                if chat_history:
+                    for user_msg, bot_msg in chat_history:
+                        formatted_history.append({"role": "user", "content": user_msg})
+                        formatted_history.append({"role": "assistant", "content": bot_msg})
                     
                 # Get response
                 response = me.chat(message, formatted_history)
                 
-                # Add to chat history in messages format
-                chat_history.append({"role": "user", "content": message})
-                chat_history.append({"role": "assistant", "content": response})
+                # Add to chat history in Gradio format (list of pairs)
+                chat_history.append((message, response))
                 
                 return "", chat_history
             
