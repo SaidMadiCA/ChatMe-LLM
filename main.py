@@ -273,12 +273,21 @@ if __name__ == "__main__":
                     for user_msg, bot_msg in chat_history:
                         formatted_history.append({"role": "user", "content": user_msg})
                         formatted_history.append({"role": "assistant", "content": bot_msg})
-                    
-                # Get response
-                response = me.chat(message, formatted_history)
+                
+                # Use the FastAPI endpoint instead of direct method call
+                import requests
+                response = requests.post(
+                    "http://localhost:8000/chat",
+                    json={"message": message, "history": formatted_history}
+                )
+                
+                if response.status_code == 200:
+                    bot_response = response.json()["response"]
+                else:
+                    bot_response = f"Error: Could not get response from API. Status code: {response.status_code}"
                 
                 # Add to chat history in Gradio format (list of pairs)
-                chat_history.append((message, response))
+                chat_history.append((message, bot_response))
                 
                 return "", chat_history
             
@@ -293,15 +302,39 @@ if __name__ == "__main__":
             sources_output = gr.JSON(label="Sources")
             
             def rag_search(query, k):
-                if me.rag is None:
-                    me.initialize_rag()
-                answer, sources = me.rag.query(query, top_k=k)
-                return answer, sources
+                # Use the FastAPI endpoint instead of direct method call
+                import requests
+                response = requests.post(
+                    "http://localhost:8000/rag/query",
+                    json={"query": query, "top_k": k}
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    return result["answer"], result["sources"]
+                else:
+                    return f"Error: Could not get response from API. Status code: {response.status_code}", []
             
             query_button.click(rag_search, [query_input, top_k], [answer_output, sources_output])
         
         # Launch Gradio with FastAPI backend
-        interface.launch(server_name="0.0.0.0", server_port=8000, share=True)
+        # First start the FastAPI server in a separate thread
+        import threading
+        import time
+        
+        def start_fastapi():
+            import uvicorn
+            uvicorn.run(app, host="localhost", port=8000)
+        
+        # Start FastAPI server in a separate thread
+        fastapi_thread = threading.Thread(target=start_fastapi, daemon=True)
+        fastapi_thread.start()
+        
+        # Give FastAPI server a moment to start
+        time.sleep(1)
+        
+        # Then launch Gradio on a different port
+        interface.launch(server_name="0.0.0.0", server_port=8001, share=True)
     
     # If running without Gradio, use Uvicorn to start the FastAPI app
     # uvicorn.run(app, host="0.0.0.0", port=8000)

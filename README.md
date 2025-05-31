@@ -95,89 +95,94 @@ A sophisticated FastAPI application that creates a personalized AI assistant enh
 
 ### Starting the Server
 
-There are two ways to run the application:
-
-1. **Gradio UI Mode** (Recommended):
-   ```bash
-   # Activate the virtual environment
-   source venv/bin/activate
-
-   # Start the server with Gradio UI
-   python main.py
-   ```
-   This launches both the FastAPI backend and the Gradio UI frontend on http://0.0.0.0:8000
-
-2. **API-Only Mode**:
-   ```bash
-   # Activate the virtual environment
-   source venv/bin/activate
-
-   # Run with just FastAPI (no UI)
-   uvicorn main:app --reload
-   ```
-   This launches only the FastAPI endpoints without the Gradio UI.
-
-### Important Note on Running Modes
-
-The application has different behavior depending on how you start it:
-
-- **Gradio UI Mode (`python main.py`)**: 
-  - Launches a Gradio interface at http://0.0.0.0:8000
-  - The REST API endpoints are NOT directly accessible
-  - RAG functionality is accessed through the Gradio UI or the modified RAG client
-
-- **API-Only Mode (`uvicorn main:app --reload`)**: 
-  - Launches only the REST API at http://localhost:8000
-  - The Gradio UI is NOT available
-  - All REST API endpoints are directly accessible at their documented URLs
-  - Swagger documentation is available at http://localhost:8000/docs
-
-### Using the Clients
-
-#### Chat Client
-For general conversation with your AI persona:
+The application follows a client-server architecture with a FastAPI backend and multiple client options:
 
 ```bash
 # Activate the virtual environment
 source venv/bin/activate
 
-# Run the chat client (works with both server modes)
-python client.py
+# Start both the FastAPI server and Gradio UI
+python main.py
 ```
 
-#### RAG Client
-For direct knowledge base queries with source attribution:
+This will:
+1. Start the FastAPI server on http://localhost:8000
+2. Start the Gradio UI on http://0.0.0.0:8001
+3. Open a shareable link for remote access (visible in console output)
 
-```bash
-# When server is in API-Only Mode (uvicorn main:app --reload)
-python rag_client.py
+### Architecture Overview
 
-# Note: rag_client.py is configured for API-Only Mode by default
-# If you want to use it with Gradio UI Mode, edit rag_client.py to change:
-# - URL from "http://localhost:8000/rag/query" to "http://0.0.0.0:8000/gradio_api/rag_search"
-# - Payload parameter from "top_k" to "k"
-# - Response parsing to handle the Gradio API response format
+The updated architecture provides a clear separation between backend and frontend:
 
-# Single query mode
-python rag_client.py --query "What projects have you worked on?" --top_k 5
-```
+1. **FastAPI Backend** (http://localhost:8000):
+   - RESTful API endpoints
+   - RAG system implementation
+   - Chat processing logic
+   - Swagger documentation at /docs
 
-### Accessing the Web UI
+2. **Gradio UI Frontend** (http://0.0.0.0:8001):
+   - Web-based user interface
+   - Communicates with FastAPI backend
+   - Chat interface and RAG query interface
+   - No direct access to backend logic
 
-- **Gradio UI**: http://0.0.0.0:8000 (when running `python main.py`)
-  - **Chat Tab**: Interactive conversation with your AI persona
-  - **RAG Query Tab**: Direct knowledge base queries with source attribution
-- **FastAPI Swagger docs**: http://localhost:8000/docs (only when running `uvicorn main:app --reload`)
+This design follows best practices for web application development, with a clean separation of concerns between the backend API and the frontend interface.
+
+### Using the Clients
+
+#### Client Options
+
+You have multiple ways to interact with the system:
+
+1. **Web Browser (Recommended)**:
+   - Access the Gradio UI at http://0.0.0.0:8001
+   - Use the Chat tab for conversation
+   - Use the RAG Query tab for knowledge base search
+
+2. **Command-Line Chat Client**:
+   ```bash
+   # Activate the virtual environment
+   source venv/bin/activate
+
+   # Run the chat client
+   python client.py
+   ```
+
+3. **Command-Line RAG Client**:
+   ```bash
+   # Activate the virtual environment
+   source venv/bin/activate
+
+   # Interactive mode
+   python rag_client.py
+
+   # Single query mode
+   python rag_client.py --query "What projects have you worked on?" --top_k 5
+   ```
+
+4. **Direct API Calls**:
+   - Use the Swagger documentation at http://localhost:8000/docs
+   - Or make HTTP requests directly to the API endpoints
+
+### API Endpoints
+
+| Endpoint | Method | Description | Usage |
+|----------|--------|-------------|-------|
+| `/chat` | POST | Chat with the AI persona | Used by the Chat UI and chat client |
+| `/rag/query` | POST | Query the RAG system | Used by the RAG Query UI and RAG client |
+| `/record-details` | POST | Record user information | Called by function tools in the chat |
+| `/record-question` | POST | Record unanswered questions | Called by function tools in the chat |
 
 ### Using the Gradio UI
 
-The Gradio UI provides a user-friendly interface for interacting with the system:
+The Gradio UI provides a user-friendly interface for interacting with the system at http://0.0.0.0:8001:
 
 1. **Chat Tab**:
    - Type your message in the text box and press Enter
    - View the conversation history in the chat window
    - Clear the conversation with the Clear button
    - The chat uses your personal information to provide context-aware responses
+   - Behind the scenes, this uses the `/chat` API endpoint
 
 2. **RAG Query Tab**:
    - Enter your question in the Question field
@@ -185,6 +190,7 @@ The Gradio UI provides a user-friendly interface for interacting with the system
    - Click Search to get an answer
    - View the answer and the source documents that were used
    - Sources are displayed with their content and relevance score
+   - Behind the scenes, this uses the `/rag/query` API endpoint
 
 ## Technical Implementation Details
 
@@ -270,12 +276,18 @@ Modify the Gradio interface in `main.py` to add additional UI elements or change
 - **API Key Issues**: Check that your OpenAI API key is valid and has sufficient quota
 - **File Not Found Errors**: Verify paths to your LinkedIn PDF and summary file
 - **Dependency Problems**: Make sure all packages are installed with the correct versions
-- **RAG Client Errors**: Verify that the client is configured correctly for your server mode
-- **Chat UI Not Working**: If the chat UI doesn't work, try the following:
+
+- **RAG Client Errors**: 
+  - Ensure the FastAPI server is running and accessible at http://localhost:8000
+  - Check that the client is using the correct endpoint URL
+  - Verify the request payload matches the API expectations
+
+- **Chat UI Not Working**: 
   - Ensure you're running the latest version of the code
-  - Restart the server in Gradio UI mode (`python main.py`)
-  - Clear your browser cache or try a different browser
+  - Verify that both servers are running (FastAPI on port 8000 and Gradio on port 8001)
+  - Try accessing the Gradio UI directly at http://0.0.0.0:8001
   - Check browser console for any JavaScript errors
+  - If using the chat client, ensure it's properly formatted for the API
 
 ## Extension Ideas
 
