@@ -181,6 +181,7 @@ You have multiple ways to interact with the system:
 |----------|--------|-------------|-------|
 | `/chat` | POST | Chat with the AI persona | Used by the Chat UI and chat client |
 | `/rag/query` | POST | Query the RAG system | Used by the RAG Query UI and RAG client |
+| `/upload` | POST | Upload documents to knowledge base | Used by the Upload Document UI |
 | `/record-details` | POST | Record user information | Called by function tools in the chat |
 | `/record-question` | POST | Record unanswered questions | Called by function tools in the chat |
 
@@ -202,6 +203,14 @@ The Gradio UI provides a user-friendly interface for interacting with the system
    - View the answer and the source documents that were used
    - Sources are displayed with their content and relevance score
    - Behind the scenes, this uses the `/rag/query` API endpoint
+
+3. **Upload Document Tab**:
+   - Upload PDF or TXT files to add to the knowledge base
+   - Optionally provide a custom name for the document
+   - Click "Upload and Index" to process the document
+   - View status information about the upload and indexing process
+   - Documents uploaded here will be immediately available for RAG queries
+   - Behind the scenes, this uses the `/upload` API endpoint
 
 ## Technical Implementation Details
 

@@ -3,10 +3,12 @@ from openai import OpenAI
 import json
 import os
 import requests
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, EmailStr
+import shutil
+from pathlib import Path
 from pypdf import PdfReader
 import uvicorn
 from typing import Optional, List, Dict, Any
@@ -60,6 +62,12 @@ class RAGSource(BaseModel):
 class RAGResponse(BaseModel):
     answer: str
     sources: List[RAGSource] = []
+    
+class FileUploadResponse(BaseModel):
+    filename: str
+    status: str
+    message: str
+    chunks_indexed: int
 
 # Push notification function
 def push(text):
@@ -268,13 +276,62 @@ async def record_question_endpoint(question: Question, background_tasks: Backgro
     background_tasks.add_task(record_unknown_question, question.question)
     return {"status": "success", "message": "Question recorded"}
 
+@app.post("/upload", response_model=FileUploadResponse)
+async def upload_file(file: UploadFile = File(...), custom_name: Optional[str] = Form(None)):
+    """
+    Upload a file to the knowledge base for RAG indexing
+    """
+    try:
+        # Create knowledge directory if it doesn't exist
+        knowledge_dir = Path("me/knowledge")
+        knowledge_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Get the file extension
+        file_extension = Path(file.filename).suffix.lower()
+        
+        # Check if file type is supported
+        if file_extension not in ['.txt', '.pdf']:
+            raise HTTPException(status_code=400, detail="Only .txt and .pdf files are supported")
+        
+        # Use custom name if provided, otherwise use original filename
+        base_name = custom_name if custom_name else Path(file.filename).stem
+        # Clean the filename to remove special characters
+        base_name = ''.join(c for c in base_name if c.isalnum() or c in [' ', '.', '_', '-']).strip()
+        
+        # Generate final filename with the original extension
+        final_filename = f"{base_name}{file_extension}"
+        file_path = knowledge_dir / final_filename
+        
+        # Save the file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Add the file to the RAG system
+        chunks_indexed = 0
+        if file_extension == '.pdf':
+            chunks_indexed = me.rag.add_pdf(str(file_path), {"source": final_filename})
+        else:  # .txt
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+                chunks_indexed = me.rag.add_text(text, {"source": final_filename})
+        
+        return {
+            "filename": final_filename,
+            "status": "success",
+            "message": f"File uploaded and indexed successfully",
+            "chunks_indexed": chunks_indexed
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
 @app.get("/")
 async def root():
     return {
         "message": f"Welcome to {me.name}'s chat API with RAG capabilities",
         "endpoints": {
             "chat": "/chat",
-            "rag": "/rag/query"
+            "rag": "/rag/query",
+            "upload": "/upload"
         }
     }
 
@@ -339,6 +396,50 @@ if __name__ == "__main__":
                     return f"Error: Could not get response from API. Status code: {response.status_code}", []
             
             query_button.click(rag_search, [query_input, top_k], [answer_output, sources_output])
+            
+        with gr.Tab("Upload Document"):
+            with gr.Column():
+                file_upload = gr.File(label="Upload a document for the knowledge base", file_types=[".txt", ".pdf"])
+                custom_name = gr.Textbox(label="Custom document name (optional)", placeholder="Leave blank to use original filename")
+                upload_button = gr.Button("Upload and Index")
+                upload_status = gr.Textbox(label="Status", interactive=False)
+                upload_details = gr.JSON(label="Details", visible=False)
+                
+                def upload_document(file, custom_name):
+                    if file is None:
+                        return "Please select a file to upload", {}
+                    
+                    try:
+                        import requests
+                        import os
+                        
+                        # Create a form with the file and custom name
+                        files = {'file': (os.path.basename(file.name), open(file.name, 'rb'), 'application/octet-stream')}
+                        data = {}
+                        if custom_name:
+                            data['custom_name'] = custom_name
+                        
+                        # Send request to the upload endpoint
+                        response = requests.post(
+                            "http://localhost:8000/upload",
+                            files=files,
+                            data=data
+                        )
+                        
+                        if response.status_code == 200:
+                            result = response.json()
+                            status_message = f"Success: {result['filename']} uploaded and indexed with {result['chunks_indexed']} chunks"
+                            return status_message, result
+                        else:
+                            return f"Error: {response.status_code} - {response.text}", {}
+                    except Exception as e:
+                        return f"Error: {str(e)}", {}
+                
+                upload_button.click(
+                    upload_document, 
+                    [file_upload, custom_name], 
+                    [upload_status, upload_details]
+                )
         
         # Launch Gradio with FastAPI backend
         # First start the FastAPI server in a separate thread
