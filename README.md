@@ -17,7 +17,7 @@ A sophisticated FastAPI application that creates a personalized AI assistant enh
    - Document chunking with configurable size and overlap
    - PDF and text file processing
    - Cosine similarity scoring for relevant context retrieval
-   - No external vector database required (in-memory storage)
+   - Integration with Qdrant vector database for scalable vector search
 
 3. **LLM Integration**
    - Uses OpenAI's GPT-4o-mini model
@@ -86,9 +86,20 @@ A sophisticated FastAPI application that creates a personalized AI assistant enh
 5. **Configure environment variables**
    Edit the `.env` file with your API keys:
    ```
+   # OpenAI API (Required)
    OPENAI_API_KEY=your_openai_api_key_here
-   PUSHOVER_TOKEN=your_pushover_token_here  # Optional
-   PUSHOVER_USER=your_pushover_user_key_here  # Optional
+   
+   # Pushover notifications (Optional)
+   PUSHOVER_TOKEN=your_pushover_token_here
+   PUSHOVER_USER=your_pushover_user_key_here
+   
+   # Qdrant vector database (Required for remote mode)
+   QDRANT_URL=https://your-instance.qdrant.tech
+   QDRANT_API_KEY=your_qdrant_api_key
+   QDRANT_COLLECTION=knowledge_base
+   
+   # RAG settings (Optional)
+   EMBEDDING_MODEL=text-embedding-3-small
    ```
 
 ## Running the Application
@@ -264,11 +275,11 @@ Modify the Gradio interface in `main.py` to add additional UI elements or change
 
 ## Technical Limitations & Considerations
 
-- **In-Memory Storage**: Document embeddings are stored in memory, which may not scale for very large knowledge bases
 - **API Key Security**: Ensure your .env file is properly secured and not committed to version control
 - **Rate Limiting**: Be mindful of OpenAI API usage and associated costs
 - **Cold Start**: First query after server start may be slower due to embedding generation
 - **Server Mode Differences**: The API endpoints behave differently depending on how you start the server
+- **Qdrant Connection**: Ensure proper configuration of Qdrant environment variables for remote server connection
 
 ## Troubleshooting
 

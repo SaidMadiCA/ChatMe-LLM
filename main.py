@@ -11,7 +11,8 @@ from pypdf import PdfReader
 import uvicorn
 from typing import Optional, List, Dict, Any
 
-from rag import RAGSystem
+# Import the Qdrant-based RAG system
+from rag_qdrant import RAGSystem
 
 # Load environment variables
 load_dotenv(override=True)
@@ -149,7 +150,29 @@ class Me:
     
     def initialize_rag(self):
         """Initialize and populate the RAG system"""
-        self.rag = RAGSystem()
+        try:
+            # Initialize RAG with Qdrant configuration from environment variables
+            # Note: local_path is not used in client-server mode, but included for compatibility
+            self.rag = RAGSystem(
+                embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
+                collection_name=os.getenv("QDRANT_COLLECTION", "knowledge_base"),
+                local_path=os.getenv("QDRANT_LOCAL_PATH", "./qdrant_data")
+            )
+            
+            # Get current document count to avoid re-adding documents
+            doc_count = self.rag.get_document_count()
+            if doc_count > 0:
+                print(f"Found {doc_count} existing documents in Qdrant collection")
+                return
+                
+            print("Initializing Qdrant with documents...")
+        except Exception as e:
+            print(f"Error initializing Qdrant: {e}")
+            print("Falling back to in-memory RAG system")
+            # Import the original RAG system as a fallback
+            from rag import RAGSystem as InMemoryRAGSystem
+            self.rag = InMemoryRAGSystem()
+            print("Using in-memory RAG system instead")
         
         # Add summary and LinkedIn data
         self.rag.add_text(self.summary, {"source": "summary"})

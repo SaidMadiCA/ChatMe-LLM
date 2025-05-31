@@ -1,0 +1,50 @@
+# Technical Skills and Expertise
+
+## Programming Languages
+- **Python**: Expert level with 8+ years of experience. Proficient in frameworks like Flask, FastAPI, Django, and data science libraries including NumPy, Pandas, scikit-learn.
+- **JavaScript/TypeScript**: Advanced knowledge with 6 years of experience in React, Node.js, and Express.
+- **Rust**: Intermediate level, used for performance-critical applications and system programming.
+- **SQL**: Expert in database design, optimization, and complex queries across PostgreSQL and MySQL.
+- **Go**: Working knowledge for microservices development.
+
+## Machine Learning & AI
+- **Deep Learning**: Designed and implemented neural networks using PyTorch and TensorFlow.
+- **NLP**: Built text classification, sentiment analysis, and language generation systems.
+- **Computer Vision**: Experience with object detection, image classification, and video analysis.
+- **MLOps**: Designed CI/CD pipelines for ML models using tools like MLflow and Kubeflow.
+- **LLMs**: Fine-tuned and deployed large language models for various applications, including RAG systems.
+
+## Cloud & DevOps
+- **AWS**: Certified Solutions Architect with extensive experience in EC2, S3, Lambda, ECS, DynamoDB.
+- **Infrastructure as Code**: Expertise in Terraform and CloudFormation for reproducible deployments.
+- **Kubernetes**: Designed and managed production clusters for high-availability services.
+- **CI/CD**: Built robust pipelines using GitHub Actions, Jenkins, and CircleCI.
+- **Monitoring**: Implemented observability solutions with Prometheus, Grafana, and ELK stack.
+
+## Software Architecture
+- **Microservices**: Designed scalable distributed systems with clear domain boundaries.
+- **Event-driven Architecture**: Implemented systems using Kafka, RabbitMQ, and AWS SNS/SQS.
+- **API Design**: Created RESTful and GraphQL APIs with comprehensive documentation.
+- **Serverless Applications**: Developed cost-effective, scalable solutions using AWS Lambda and Azure Functions.
+- **System Design**: Experience with high-throughput, low-latency systems handling millions of requests.
+
+## Data Engineering
+- **Big Data**: Worked with Spark and Hadoop for distributed data processing.
+- **Data Pipelines**: Built ETL processes using Airflow and AWS Glue.
+- **Streaming**: Implemented real-time data processing with Kafka Streams and Flink.
+- **Data Warehousing**: Experience with Snowflake, Redshift, and BigQuery.
+- **Data Modeling**: Designed efficient schemas for various use cases and data volumes.
+
+## Security
+- **Authentication & Authorization**: Implemented OAuth, OIDC, and JWT-based systems.
+- **Secure Development Practices**: Expertise in OWASP guidelines and secure coding.
+- **Encryption**: Applied proper data protection techniques at rest and in transit.
+- **Penetration Testing**: Basic knowledge of identifying and mitigating vulnerabilities.
+- **Compliance**: Worked on GDPR and HIPAA compliant systems.
+
+## Recent Learning Focus
+- **Generative AI**: Building and fine-tuning state-of-the-art models for text and image generation.
+- **Vector Databases**: Working with Pinecone, Milvus, and Weaviate for semantic search applications.
+- **Web3 Technologies**: Exploring blockchain development with Solidity.
+- **Edge Computing**: Optimizing models for deployment on edge devices.
+- **Quantum Computing**: Learning fundamentals through Qiskit.
