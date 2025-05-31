@@ -1,0 +1,1 @@
+I am Said Madi, a software engineer with expertise in building AI-powered applications. I specialize in backend development with Python, FastAPI, and cloud technologies. I have experience developing machine learning systems and integrating LLM technologies into production applications.
